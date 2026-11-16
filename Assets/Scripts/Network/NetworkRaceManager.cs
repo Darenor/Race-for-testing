@@ -49,7 +49,20 @@ public class NetworkRaceManager : NetworkBehaviour
     }
 
     private void OnClientConnected(ulong id) => EnsurePlayer(id);
-    private void OnClientDisconnected(ulong id) => players.Remove(id);
+    private void OnClientDisconnected(ulong id)
+    {
+        if (players.TryGetValue(id, out PlayerRaceData data))
+        {
+            if (RaceStarted.Value && !RaceFinished.Value && !data.finished)
+            {
+                float progress = (float)data.laps / lapsToWin;
+
+                RaceAnalytics.RaceQuit(progress);
+            }
+        }
+
+        players.Remove(id);
+    }
 
     private void EnsurePlayer(ulong id)
     {
@@ -73,6 +86,8 @@ public class NetworkRaceManager : NetworkBehaviour
             players[id].bestLap = double.PositiveInfinity;
             players[id].finished = false;
         }
+        
+        RaceAnalytics.RaceStarted(NetworkManager.ConnectedClientsIds.Count);
     }
 
     public bool IsRaceLive => RaceStarted.Value && !RaceFinished.Value &&
@@ -94,6 +109,7 @@ public class NetworkRaceManager : NetworkBehaviour
         double elapsed = now - startServerTime.Value;
 
         NotifyCheckpointRpc(playerId, checkpointIndex, elapsed);
+        RaceAnalytics.CheckpointPassed((float)elapsed);
 
         if (checkpointIndex == 0)
         {
@@ -105,6 +121,8 @@ public class NetworkRaceManager : NetworkBehaviour
             data.laps++;
             data.totalTime += lapTime;
             data.lapStart = now;
+            
+            RaceAnalytics.LapCompleted((float)lapTime);
 
             if (data.laps >= lapsToWin)
             {
@@ -119,12 +137,16 @@ public class NetworkRaceManager : NetworkBehaviour
                 }
 
                 if (allFinished)
+                {
                     RaceFinished.Value = true;
+                    RaceAnalytics.RaceFinished((float)data.totalTime);
+                }
             }
             else
             {
                 data.nextCheckpoint = 1;
             }
+            
         }
         else
         {
@@ -133,8 +155,8 @@ public class NetworkRaceManager : NetworkBehaviour
             else
                 data.nextCheckpoint++;
         }
+        
     }
-
 
     public string GetResultsText()
     {

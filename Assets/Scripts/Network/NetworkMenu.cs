@@ -16,11 +16,11 @@ public class NetworkMenu : MonoBehaviour
             NetworkManager.Singleton.StartClient();
     }
 
-    public void StartServer()
-    {
-        if (NetworkManager.Singleton != null && !NetworkManager.Singleton.IsListening)
-            NetworkManager.Singleton.StartServer();
-    }
+    // public void StartServer()
+    // {
+    //     if (NetworkManager.Singleton != null && !NetworkManager.Singleton.IsListening)
+    //         NetworkManager.Singleton.StartServer();
+    // }
 
     public void StartRace()
     {
